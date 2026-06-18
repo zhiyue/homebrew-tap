@@ -2,7 +2,7 @@ name: Update ZCode cask
 
 on:
   schedule:
-    - cron: "30 8 * * *"   # daily at 08:30 UTC
+    - cron: "0 18 * * *"   # daily at 02:00 Beijing time (UTC+8)
   workflow_dispatch:
 
 permissions:

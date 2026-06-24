@@ -1,8 +1,7 @@
 name: bump-tgcli
 
-# Auto-bump the vendored tgcli formula when dgrr/tgcli cuts a new release.
-# Upstream ships a wrong (identical) sha256 for all four platform binaries,
-# so we recompute the real per-platform checksums here instead of trusting it.
+# Auto-bump the tgcli formula when zhiyue/tgcli (our own fork) cuts a new
+# release. Recomputes the real per-platform sha256 from the release assets.
 
 on:
   schedule:
@@ -24,7 +23,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          tag=$(gh api repos/dgrr/tgcli/releases/latest --jq .tag_name)
+          tag=$(gh api repos/zhiyue/tgcli/releases/latest --jq .tag_name)
           up=${tag#v}
           cur=$(grep -E '^  version "' Formula/tgcli.rb | sed -E 's/.*"([^"]+)".*/\1/')
           [ -n "$up" ] || { echo "could not resolve upstream version" >&2; exit 1; }
@@ -48,7 +47,7 @@ jobs:
           NEWVER: ${{ steps.ver.outputs.up }}
         run: |
           set -euo pipefail
-          base="https://github.com/dgrr/tgcli/releases/download/${TAG}"
+          base="https://github.com/zhiyue/tgcli/releases/download/${TAG}"
           declare -A SHA
           for p in darwin-arm64 darwin-amd64 linux-arm64 linux-amd64; do
             curl -fsSL -o "bin-$p" "$base/tgcli-$p"

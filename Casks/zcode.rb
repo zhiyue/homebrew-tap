@@ -18,8 +18,8 @@ cask "zcode" do
   homepage "https://zcode.z.ai/cn"
 
   livecheck do
-    url "https://zcode.z.ai/cn"
-    regex(/ZCode[- ]v?(\d+(?:\.\d+)+)/i)
+    url "https://cdn-zcode.z.ai/zcode/electron/releases/latest/latest-mac.yml"
+    strategy :electron_builder
   end
 
   app "ZCode.app"

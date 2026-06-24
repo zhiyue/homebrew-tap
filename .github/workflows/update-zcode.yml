@@ -33,7 +33,7 @@ jobs:
         id: sha
         run: |
           ver="${{ steps.check.outputs.latest }}"
-          base="https://cdn.zcode-ai.com/zcode/electron/releases/${ver}"
+          base="https://cdn-zcode.z.ai/zcode/electron/releases/${ver}"
           curl -fsSL -o /tmp/arm64.dmg "${base}/ZCode-${ver}-mac-arm64.dmg"
           curl -fsSL -o /tmp/x64.dmg   "${base}/ZCode-${ver}-mac-x64.dmg"
           echo "arm64=$(sha256sum /tmp/arm64.dmg | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"

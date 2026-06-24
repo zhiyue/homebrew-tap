@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
-# Manually maintained fork of dgrr/tgcli's own formula.
+# Vendored, auto-bumped copy of dgrr/tgcli's formula.
 #
-# Upstream (dgrr/tgcli) ships the SAME (wrong) sha256 for all four platform
-# binaries, so `brew install dgrr/tgcli/tgcli` always fails the checksum check.
-# This copy pins the correct per-platform sha256, verified against the actual
-# v0.3.0 release assets (each is a valid Mach-O / ELF executable).
+# Why vendored: upstream (dgrr/tgcli) ships the SAME (wrong) sha256 for all four
+# platform binaries, so `brew install dgrr/tgcli/tgcli` always fails the
+# checksum check. This copy pins the correct per-platform sha256.
 #
-# NOT auto-generated — unlike the other formulae in this tap. On every upstream
-# release: bump `version`, then refresh all four sha256 with the new assets'
-# checksums (`shasum -a 256 tgcli-<platform>`).
+# `version` + all four sha256 are kept current automatically by
+# .github/workflows/bump-tgcli.yml (checks dgrr/tgcli daily, recomputes the
+# checksums from the release assets, commits). Manual edits get overwritten.
 
 class Tgcli < Formula
   desc "Telegram CLI tool using grammers (pure Rust MTProto)"

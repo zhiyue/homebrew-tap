@@ -1,0 +1,90 @@
+name: bump-tgcli
+
+# Auto-bump the vendored tgcli formula when dgrr/tgcli cuts a new release.
+# Upstream ships a wrong (identical) sha256 for all four platform binaries,
+# so we recompute the real per-platform checksums here instead of trusting it.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # daily, 06:00 UTC
+  workflow_dispatch:       # allow manual runs
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve upstream vs current version
+        id: ver
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag=$(gh api repos/dgrr/tgcli/releases/latest --jq .tag_name)
+          up=${tag#v}
+          cur=$(grep -E '^  version "' Formula/tgcli.rb | sed -E 's/.*"([^"]+)".*/\1/')
+          [ -n "$up" ] || { echo "could not resolve upstream version" >&2; exit 1; }
+          {
+            echo "tag=$tag"
+            echo "up=$up"
+            echo "cur=$cur"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$up" = "$cur" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Up to date at $cur"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Update available: $cur -> $up"
+          fi
+
+      - name: Recompute checksums and update formula
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          NEWVER: ${{ steps.ver.outputs.up }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/dgrr/tgcli/releases/download/${TAG}"
+          declare -A SHA
+          for p in darwin-arm64 darwin-amd64 linux-arm64 linux-amd64; do
+            curl -fsSL -o "bin-$p" "$base/tgcli-$p"
+            SHA[$p]=$(sha256sum "bin-$p" | awk '{print $1}')
+            [ -n "${SHA[$p]}" ] || { echo "empty sha for $p" >&2; exit 1; }
+          done
+          awk -v v="$NEWVER" \
+              -v s_darm="${SHA[darwin-arm64]}" -v s_damd="${SHA[darwin-amd64]}" \
+              -v s_larm="${SHA[linux-arm64]}"  -v s_lamd="${SHA[linux-amd64]}" '
+            /^  version "/ { sub(/"[^"]*"/, "\"" v "\"") }
+            /tgcli-darwin-arm64"/ { plat="darm" }
+            /tgcli-darwin-amd64"/ { plat="damd" }
+            /tgcli-linux-arm64"/  { plat="larm" }
+            /tgcli-linux-amd64"/  { plat="lamd" }
+            /^      sha256 "/ {
+              if      (plat=="darm") sub(/"[0-9a-f]*"/, "\"" s_darm "\"")
+              else if (plat=="damd") sub(/"[0-9a-f]*"/, "\"" s_damd "\"")
+              else if (plat=="larm") sub(/"[0-9a-f]*"/, "\"" s_larm "\"")
+              else if (plat=="lamd") sub(/"[0-9a-f]*"/, "\"" s_lamd "\"")
+            }
+            { print }
+          ' Formula/tgcli.rb > Formula/tgcli.rb.new
+          mv Formula/tgcli.rb.new Formula/tgcli.rb
+          ruby -c Formula/tgcli.rb
+          echo "----- updated -----"
+          grep -E 'version "|sha256 "' Formula/tgcli.rb
+
+      - name: Commit and push
+        if: steps.ver.outputs.changed == 'true'
+        env:
+          NEWVER: ${{ steps.ver.outputs.up }}
+          OLDVER: ${{ steps.ver.outputs.cur }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/tgcli.rb
+          git commit -m "tgcli ${OLDVER} -> ${NEWVER} (auto-bump, recomputed sha256)"
+          git push

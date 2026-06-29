@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 cask "zcode" do
-  version "3.1.8"
+  version "3.2.0"
 
   on_arm do
     url "https://cdn-zcode.z.ai/zcode/electron/releases/#{version}/ZCode-#{version}-mac-arm64.dmg"
-    sha256 "0f0d5c3b3156322605f930e088327090079d4ce60f790040fa543caba55f36a9"
+    sha256 "19ecad4cf53e0dd4a12905d4cd7079ae594d89318bb95324193e9d1f6c1d6e10"
   end
 
   on_intel do
     url "https://cdn-zcode.z.ai/zcode/electron/releases/#{version}/ZCode-#{version}-mac-x64.dmg"
-    sha256 "38d9eaaa61f902689406da845cff5df69a543e9cfb7620c91a74e71d55510154"
+    sha256 "417390770d1e2431d2f859391fe82179cbe208507c56a66b76d0fbe59f86c6af"
   end
 
   name "ZCode"

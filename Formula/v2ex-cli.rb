@@ -3,7 +3,6 @@
 class V2exCli < Formula
   desc "Agent-friendly CLI for the V2EX API 2.0"
   homepage "https://github.com/zhiyue/v2ex-cli"
-  version "0.1.0"
   license "Apache-2.0"
 
   depends_on "curl"

@@ -1,0 +1,76 @@
+name: bump-bird-rs
+
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve latest version
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag=$(gh api repos/zhiyue/bird-rs/releases/latest --jq .tag_name)
+          latest=${tag#v}
+          current=$(grep -E '^  version "' Formula/bird-rs.rb | sed -E 's/.*"([^"]+)".*/\1/')
+          [ -n "$latest" ] || { echo "could not resolve latest version" >&2; exit 1; }
+          {
+            echo "tag=$tag"
+            echo "latest=$latest"
+            echo "current=$current"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$latest" = "$current" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Update formula
+        if: steps.version.outputs.changed == 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.latest }}
+        run: |
+          set -euo pipefail
+          base="https://github.com/zhiyue/bird-rs/releases/download/${TAG}"
+          arm_asset="bird-rs-${TAG}-aarch64-apple-darwin.tar.gz"
+          intel_asset="bird-rs-${TAG}-x86_64-apple-darwin.tar.gz"
+          curl -fsSL -o "$arm_asset" "$base/$arm_asset"
+          curl -fsSL -o "$intel_asset" "$base/$intel_asset"
+          arm_sha=$(sha256sum "$arm_asset" | awk '{print $1}')
+          intel_sha=$(sha256sum "$intel_asset" | awk '{print $1}')
+          awk -v version="$VERSION" -v arm_sha="$arm_sha" -v intel_sha="$intel_sha" '
+            /^  version "/ { sub(/"[^"]*"/, "\"" version "\"") }
+            /aarch64-apple-darwin/ { platform="arm" }
+            /x86_64-apple-darwin/ { platform="intel" }
+            /^      sha256 "/ {
+              if (platform == "arm") sub(/"[0-9a-f]+"/, "\"" arm_sha "\"")
+              if (platform == "intel") sub(/"[0-9a-f]+"/, "\"" intel_sha "\"")
+            }
+            { print }
+          ' Formula/bird-rs.rb > Formula/bird-rs.rb.new
+          mv Formula/bird-rs.rb.new Formula/bird-rs.rb
+          ruby -c Formula/bird-rs.rb
+
+      - name: Commit and push
+        if: steps.version.outputs.changed == 'true'
+        env:
+          OLD_VERSION: ${{ steps.version.outputs.current }}
+          NEW_VERSION: ${{ steps.version.outputs.latest }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/bird-rs.rb
+          git commit -m "bird-rs ${OLD_VERSION} -> ${NEW_VERSION}"
+          git push
